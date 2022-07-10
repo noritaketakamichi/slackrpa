@@ -255,7 +255,7 @@ function doMonthlyTeamActivityJob() {
     //チャンネル作成。resの中にid等含まれている
     const channel_res = createSlackGroups(channelName,tokenID);
   
-    Logger.log("channel_resですよ～")
+    Logger.log("channel_resですよ〜")
     Logger.log(channelName)
     Logger.log(channel_res)
     
@@ -263,6 +263,9 @@ function doMonthlyTeamActivityJob() {
     members.forEach(function(memberId){
       inviteMember(channel_res["channel"]["id"],memberId,tokenID)
     })
+  
+    //チャンネルにひとこと送信
+    sendMessegeToTheChannel(channel_res["channel"]["id"],tokenID)
   }
   
   //指定のメンバーを指定のチャンネルに招待
@@ -296,7 +299,41 @@ function doMonthlyTeamActivityJob() {
     };  
     const response = UrlFetchApp.fetch(url, options);
     const json = JSON.parse(response.getContentText());
+  
     return json;
+  }
+  
+  //指定のチャンネルに一言送信する関数
+  function sendMessegeToTheChannel(channelID, tokenID){
+  
+    //シートからメッセージ取得
+    const messageText = getMessage();
+  
+    //メッセージを指定のチャンネルに送信
+    const url = "https://slack.com/api/chat.postMessage";
+    const options = {
+      "method" : "post",
+      "contentType": "application/x-www-form-urlencoded",
+      "payload" : { 
+        "token": tokenID,
+        "channel": channelID,
+        "text": messageText
+      }
+    };  
+  
+    const response = UrlFetchApp.fetch(url, options);
+    const json = JSON.parse(response.getContentText());
+  }
+  
+  //メッセージのシートからの取得
+  function getMessage() {
+    //シート指定
+    let spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = spreadsheet.getSheetByName("メッセージ");
+    
+    //メッセージの文面取得（１行のみ）
+    const messageText = sheet.getRange(1,1).getValue();
+    return messageText
   }
   
   function onOpen() {
