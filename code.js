@@ -10,6 +10,8 @@ function doMonthlyTeamActivityJob() {
   //「実行用シート」シートからチーム名、メンバーを取得
   let teamList = getTeamsAndMembers(menberNameList,tokenID);
 
+  Logger.log(teamList)
+
   //エラーが起こった時、実行終了
   if(Array.isArray(teamList)===false){
     SpreadsheetApp.getUi().alert("修正してまた実行してね！")
@@ -59,7 +61,7 @@ function getSlackUsers(tokenID) {
   const members = json.members;
   
   //シートに出力する内容を全て格納する変数（ヘッダ含む）
-  let table = [["ユーザー名", "ユーザーID"]];
+  let table = [["表示名","登録名", "ユーザーID"]];
   
   for (const member of members) {
     
@@ -67,7 +69,8 @@ function getSlackUsers(tokenID) {
     if (!member.deleted && !member.is_bot && member.id !== "USLACKBOT") {
       let id = member.id;
       let display_name = member.profile.display_name_normalized; //表示名
-      table.push([display_name, id]);
+      let real_name = member.real_name; //登録名
+      table.push([display_name, real_name, id]);
     }
     
   }
@@ -80,9 +83,11 @@ function getSlackUsers(tokenID) {
   sheet.getRange(1, 1, table.length, table[0].length).setValues(table);
 
   //メンバー名の一覧の配列を返す
+  //表示名、登録名の両方を含んだ配列
   const memberNameList = []
   members.forEach(function(member){
     memberNameList.push(member.profile.display_name_normalized)
+    memberNameList.push(member.real_name)
   })
   return memberNameList;
 }
@@ -118,6 +123,7 @@ function getChannelList(tokenID){
  * 各カラムのチーム名とメンバーを取得し配列に格納する関数
  */
 function getTeamsAndMembers(menberNameList,tokenID){
+
   //格納する配列作成
   let teamList = [];
 
@@ -157,6 +163,9 @@ function getTeamsAndMembers(menberNameList,tokenID){
     while(rowFlag===true){
       //メンバー名取得
       let memberName = sheet.getRange(rowNumber,columnNumber).getValue()
+
+      Logger.log(memberName)
+      Logger.log(menberNameList)
 
       //存在しないメンバー名の場合、実行終了[TODO]
       if(menberNameList.includes(memberName)===false){
@@ -215,26 +224,34 @@ function existsSameValue(arr){
   return existsSame;
 }
 
-//メンバーの名前からIDを取得する関数
-//入力：名前、出力：ID
+//メンバーの名前からIDを取得する関数。
+//表示名を調べたあと、登録名の一致を判定する
+//入力：表示名or登録名、出力：ID
 function getIdFromName(userName){
-  //let name="noritaket28555"
   
   //シート指定
   let spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = spreadsheet.getSheetByName("名前_ID対応表");
   
   let rowNumber = 2;
+
+  let userID;
   
-  //下端まで調査
-  while (sheet.getRange(rowNumber,1).isBlank()===false){
-  
-  
-    //名前が指定のものと一致するか？
-    if(sheet.getRange(rowNumber,1).getValue()==userName){
+  //下端まで調査.IDの列が空になったら調査終了
+  while (sheet.getRange(rowNumber,3).isBlank()===false){
+    Logger.log("------------------------------------------------")
+    Logger.log(userName)
+    Logger.log(sheet.getRange(rowNumber,1).getValue())
+    Logger.log(sheet.getRange(rowNumber,2).getValue())
+    if(sheet.getRange(rowNumber,1).getValue()==userName){         //表示名が一致するかの判定
     
-      //一致したら出力      
-      let userID = sheet.getRange(rowNumber,2).getValue()
+      //一致したらID出力      
+      userID = sheet.getRange(rowNumber,3).getValue()
+      return userID;
+      
+    }else if(sheet.getRange(rowNumber,2).getValue()==userName){   //登録名が一致するかの判定
+      //一致したらID出力      
+      userID = sheet.getRange(rowNumber,3).getValue()
       return userID;
     }
     rowNumber=rowNumber+1;
